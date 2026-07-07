@@ -85,6 +85,33 @@ fn render_json(r: &GlitchReport) -> String {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.iter().any(|a| a == "--describe") {
+        // Machine-readable description of `check` for tooling that drives it.
+        const DESCRIBE: &str = r#"{
+  "name": "glitch",
+  "summary": "static glitch / hazard analysis (reconvergent fanout)",
+  "invocation": {
+    "args_template": ["check", "{netlist}", "--lib", "{lib}"],
+    "optional": [
+      { "arg": "out", "flag": "-o" }
+    ],
+    "emits_json": true
+  },
+  "inputs": {
+    "type": "object",
+    "required": ["netlist", "lib"],
+    "properties": {
+      "netlist": { "type": "string", "description": "Netlist file to analyze for reconvergent-fanout hazards" },
+      "lib": { "type": "string", "description": "Liberty file (cell parity via timing_sense + delays), required" },
+      "out": { "type": "string", "description": "Write the report to this file instead of stdout" }
+    }
+  },
+  "artifacts": []
+}
+"#;
+        print!("{DESCRIBE}");
+        return;
+    }
     if args.iter().any(|a| a == "-h" || a == "--help") || args.is_empty() {
         print!("{USAGE}");
         return;
