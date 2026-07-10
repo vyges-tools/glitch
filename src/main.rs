@@ -106,7 +106,7 @@ fn main() {
       "out": { "type": "string", "description": "Write the report to this file instead of stdout" }
     }
   },
-  "artifacts": []
+  "artifacts": [ { "role": "hazard_report", "from_arg": "out" } ]
 }
 "#;
         print!("{DESCRIBE}");
