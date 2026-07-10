@@ -22,6 +22,7 @@ flags:
   -o FILE               write the report to FILE (default: stdout)
   --json                machine-readable JSON instead of text
   --fail-on-violation   exit 3 if any hazard is found (CI gate)
+  --describe            print a machine-readable JSON description of the command
   -h, --help · -V, --version
 ";
 
