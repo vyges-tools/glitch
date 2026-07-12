@@ -12,6 +12,7 @@ repository = "https://github.com/vyges-tools/glitch"
 # delay-table lookup come from the shared vyges-loom foundation.
 [dependencies]
 vyges-loom = { git = "https://github.com/vyges-tools/loom", branch = "main" }
+vyges-events = { git = "https://github.com/vyges-tools/events", branch = "main", default-features = false }
 
 [[bin]]
 name = "vyges-glitch"

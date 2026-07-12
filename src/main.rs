@@ -30,6 +30,40 @@ fn opt(args: &[String], name: &str) -> Option<String> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1).cloned())
 }
 
+/// Emit the vyges-events causal trail — one event per glitch hazard + a completion
+/// event. Written to stderr (the default sink) so it never mixes with the report
+/// (stdout / -o). `code` (GLITCH-<KIND>) is the clustering key; `objects` (the
+/// reconverging source net and the endpoint net) are the cross-stage co-ref keys.
+fn emit_glitch_events(r: &GlitchReport) {
+    use vyges_events::{Event, Severity};
+    for h in &r.hazards {
+        vyges_events::emit(
+            &Event::new(
+                "vyges-glitch",
+                Severity::Warn,
+                format!(
+                    "{} hazard: {} → {} ({} path(s), window {:.4} ns)",
+                    h.kind.tag(),
+                    h.source,
+                    h.endpoint,
+                    h.paths,
+                    h.window_ns
+                ),
+            )
+            .with_code(format!("GLITCH-{}", h.kind.tag().to_uppercase()))
+            .with_objects(vec![format!("net:{}", h.source), format!("net:{}", h.endpoint)]),
+        );
+    }
+    vyges_events::emit(
+        &Event::new(
+            "vyges-glitch",
+            if r.hazards.is_empty() { Severity::Info } else { Severity::Warn },
+            format!("glitch analysis complete: {} hazard(s)", r.hazards.len()),
+        )
+        .with_code("GLITCH-DONE"),
+    );
+}
+
 fn render_text(r: &GlitchReport) -> String {
     let mut s = String::new();
     let stat = r.hazards.iter().filter(|h| h.kind == glitch::Kind::Static).count();
@@ -138,6 +172,7 @@ fn main() {
     let lib = Lib::load(&libp).unwrap_or_else(|e| die(&format!("{libp}: {e}")));
 
     let report = glitch::analyze(&nl, &lib).unwrap_or_else(|e| die(&e));
+    emit_glitch_events(&report); // vyges-events causal trail on stderr; report goes to stdout / -o
     let json = args.iter().any(|a| a == "--json");
     let text = if json { render_json(&report) } else { render_text(&report) };
     match opt(&args, "-o") {
