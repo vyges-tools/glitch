@@ -1,6 +1,6 @@
 [package]
 name = "vyges-glitch"
-version = "0.1.13"
+version = "0.1.14"
 edition = "2021"
 description = "Static glitch/hazard analysis: a gate-level netlist + Liberty in, reconvergent-fanout hazards out."
 license = "Apache-2.0"
