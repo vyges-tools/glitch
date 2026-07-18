@@ -27,7 +27,9 @@ flags:
 ";
 
 fn opt(args: &[String], name: &str) -> Option<String> {
-    args.iter().position(|a| a == name).and_then(|i| args.get(i + 1).cloned())
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1).cloned())
 }
 
 /// Emit the vyges-events causal trail — one event per glitch hazard + a completion
@@ -51,13 +53,20 @@ fn emit_glitch_events(r: &GlitchReport) {
                 ),
             )
             .with_code(format!("GLITCH-{}", h.kind.tag().to_uppercase()))
-            .with_objects(vec![format!("net:{}", h.source), format!("net:{}", h.endpoint)]),
+            .with_objects(vec![
+                format!("net:{}", h.source),
+                format!("net:{}", h.endpoint),
+            ]),
         );
     }
     vyges_events::emit(
         &Event::new(
             "vyges-glitch",
-            if r.hazards.is_empty() { Severity::Info } else { Severity::Warn },
+            if r.hazards.is_empty() {
+                Severity::Info
+            } else {
+                Severity::Warn
+            },
             format!("glitch analysis complete: {} hazard(s)", r.hazards.len()),
         )
         .with_code("GLITCH-DONE"),
@@ -66,7 +75,11 @@ fn emit_glitch_events(r: &GlitchReport) {
 
 fn render_text(r: &GlitchReport) -> String {
     let mut s = String::new();
-    let stat = r.hazards.iter().filter(|h| h.kind == glitch::Kind::Static).count();
+    let stat = r
+        .hazards
+        .iter()
+        .filter(|h| h.kind == glitch::Kind::Static)
+        .count();
     let dyn_ = r.hazards.len() - stat;
     s.push_str(&format!(
         "vyges-glitch — {} hazard(s): {} static, {} dynamic\n",
@@ -75,7 +88,10 @@ fn render_text(r: &GlitchReport) -> String {
         dyn_
     ));
     if r.comb_loops > 0 {
-        s.push_str(&format!("  note: {} combinational loop edge(s) broken\n", r.comb_loops));
+        s.push_str(&format!(
+            "  note: {} combinational loop edge(s) broken\n",
+            r.comb_loops
+        ));
     }
     if r.hazards.is_empty() {
         s.push_str("  no reconvergent-fanout hazards.\n");
@@ -101,6 +117,21 @@ fn render_json(r: &GlitchReport) -> String {
     let mut s = String::from("{\n");
     s.push_str(&format!("  \"hazards\": {},\n", r.hazards.len()));
     s.push_str(&format!("  \"comb_loops\": {},\n", r.comb_loops));
+    // The single verdict, tri-state on purpose.
+    //
+    // Combinational loops are broken rather than followed, so where any were cut the
+    // aggregation never traversed those edges and the search for hazards was incomplete
+    // there. Finding none under those conditions is not evidence that none exist — so the
+    // verdict is `null`, not a pass. Hazards that WERE found still fail regardless: an
+    // incomplete search does not cast doubt on what it did find.
+    let glitch_free = if !r.hazards.is_empty() {
+        "false".to_string()
+    } else if r.comb_loops > 0 {
+        "null".to_string()
+    } else {
+        "true".to_string()
+    };
+    s.push_str(&format!("  \"glitch_free\": {glitch_free},\n"));
     s.push_str("  \"items\": [\n");
     for (i, h) in r.hazards.iter().enumerate() {
         let comma = if i + 1 < r.hazards.len() { "," } else { "" };
@@ -141,7 +172,12 @@ fn main() {
       "out": { "type": "string", "description": "Write the report to this file instead of stdout" }
     }
   },
-  "artifacts": [ { "role": "hazard_report", "from_arg": "out" } ]
+  "artifacts": [ { "role": "hazard_report", "from_arg": "out" } ],
+  "assertion": {
+    "id": "glitch-free",
+    "field": "glitch_free",
+    "pass_when": { "is_true": true }
+  }
 }
 "#;
         print!("{DESCRIBE}");
@@ -174,7 +210,11 @@ fn main() {
     let report = glitch::analyze(&nl, &lib).unwrap_or_else(|e| die(&e));
     emit_glitch_events(&report); // vyges-events causal trail on stderr; report goes to stdout / -o
     let json = args.iter().any(|a| a == "--json");
-    let text = if json { render_json(&report) } else { render_text(&report) };
+    let text = if json {
+        render_json(&report)
+    } else {
+        render_text(&report)
+    };
     match opt(&args, "-o") {
         Some(p) => {
             if let Err(e) = std::fs::write(&p, &text) {
@@ -191,4 +231,63 @@ fn main() {
 fn die(msg: &str) -> ! {
     eprintln!("error: {msg}");
     exit(1);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vyges_glitch::glitch::{Hazard, Kind};
+
+    fn hazard() -> Hazard {
+        Hazard {
+            endpoint: "y".into(),
+            source: "a".into(),
+            kind: Kind::Static,
+            paths: 2,
+            window_ns: 0.0,
+        }
+    }
+
+    /// `glitch_free` distinguishes "searched everywhere, found nothing" from "could not
+    /// search everywhere, found nothing" — combinational loops are broken rather than
+    /// followed, so the second is not evidence of a clean design.
+    #[test]
+    fn glitch_free_is_tri_state() {
+        let clean = GlitchReport {
+            hazards: vec![],
+            comb_loops: 0,
+        };
+        assert!(
+            render_json(&clean).contains("\"glitch_free\": true"),
+            "complete search, no hazards"
+        );
+
+        let cut = GlitchReport {
+            hazards: vec![],
+            comb_loops: 3,
+        };
+        assert!(
+            render_json(&cut).contains("\"glitch_free\": null"),
+            "loops were broken, so finding no hazards proves nothing"
+        );
+
+        let found = GlitchReport {
+            hazards: vec![hazard()],
+            comb_loops: 0,
+        };
+        assert!(
+            render_json(&found).contains("\"glitch_free\": false"),
+            "hazards found"
+        );
+
+        // An incomplete search does not cast doubt on what it DID find.
+        let both = GlitchReport {
+            hazards: vec![hazard()],
+            comb_loops: 5,
+        };
+        assert!(
+            render_json(&both).contains("\"glitch_free\": false"),
+            "hazards found still fail even when loops were broken"
+        );
+    }
 }

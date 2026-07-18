@@ -72,7 +72,10 @@ struct Agg {
 }
 
 fn net_of<'a>(inst: &'a Inst, pin: &str) -> Option<&'a str> {
-    inst.conns.iter().find(|(p, _)| p == pin).map(|(_, n)| n.as_str())
+    inst.conns
+        .iter()
+        .find(|(p, _)| p == pin)
+        .map(|(_, n)| n.as_str())
 }
 
 fn apply_sense(parity: u8, sense: &str) -> u8 {
@@ -82,7 +85,11 @@ fn apply_sense(parity: u8, sense: &str) -> u8 {
         _ => {
             // non_unate (XOR-like) — the arc can pass or invert depending on side
             // inputs, so both parities become reachable.
-            if parity == 0 { 0 } else { EVEN | ODD }
+            if parity == 0 {
+                0
+            } else {
+                EVEN | ODD
+            }
         }
     }
 }
@@ -127,10 +134,19 @@ fn compute(
     }
     // a source: primary input, undriven net, or a sequential (flop Q) output
     let driver = ctx.driver.get(net);
-    let is_source = ctx.inputs.contains(net) || driver.is_none() || driver.map(|d| d.2).unwrap_or(false);
+    let is_source =
+        ctx.inputs.contains(net) || driver.is_none() || driver.map(|d| d.2).unwrap_or(false);
     if is_source {
         let mut m = BTreeMap::new();
-        m.insert(net.to_string(), Agg { parity: EVEN, min_d: 0.0, max_d: 0.0, count: 1 });
+        m.insert(
+            net.to_string(),
+            Agg {
+                parity: EVEN,
+                min_d: 0.0,
+                max_d: 0.0,
+                count: 1,
+            },
+        );
         memo.insert(net.to_string(), m.clone());
         return m;
     }
@@ -144,7 +160,9 @@ fn compute(
     if let Some(cell) = ctx.lib.cells.get(&inst.cell) {
         if let Some(pin) = cell.pins.get(out_pin) {
             for arc in &pin.arcs {
-                let Some(fanin) = net_of(inst, &arc.related_pin) else { continue };
+                let Some(fanin) = net_of(inst, &arc.related_pin) else {
+                    continue;
+                };
                 let d = arc_delay(arc);
                 let sub = compute(fanin, ctx, memo, visiting, loops);
                 for (start, a) in sub {
@@ -171,19 +189,28 @@ pub fn analyze(nl: &Netlist, lib: &Lib) -> Result<GlitchReport, String> {
     // driver map: net -> the output pin that drives it
     let mut driver: BTreeMap<&str, (usize, &str, bool)> = BTreeMap::new();
     for (i, inst) in nl.insts.iter().enumerate() {
-        let Some(cell) = lib.cells.get(&inst.cell) else { continue };
+        let Some(cell) = lib.cells.get(&inst.cell) else {
+            continue;
+        };
         for (pin, net) in &inst.conns {
             if cell.pins.get(pin).map(|p| p.direction) == Some(Dir::Out) {
                 driver.insert(net.as_str(), (i, pin.as_str(), cell.is_seq));
             }
         }
     }
-    let ctx = Ctx { nl, lib, driver, inputs: nl.inputs.iter().map(String::as_str).collect() };
+    let ctx = Ctx {
+        nl,
+        lib,
+        driver,
+        inputs: nl.inputs.iter().map(String::as_str).collect(),
+    };
 
     // endpoints: primary outputs + flop data pins (pins carrying a setup constraint)
     let mut endpoints: Vec<String> = nl.outputs.clone();
     for inst in &nl.insts {
-        let Some(cell) = lib.cells.get(&inst.cell) else { continue };
+        let Some(cell) = lib.cells.get(&inst.cell) else {
+            continue;
+        };
         if !cell.is_seq {
             continue;
         }
@@ -211,9 +238,21 @@ pub fn analyze(nl: &Netlist, lib: &Lib) -> Result<GlitchReport, String> {
             let window = (a.max_d - a.min_d).max(0.0);
             let static_hazard = a.parity == (EVEN | ODD);
             if static_hazard {
-                hazards.push(Hazard { endpoint: ep.clone(), source, kind: Kind::Static, paths: a.count, window_ns: window });
+                hazards.push(Hazard {
+                    endpoint: ep.clone(),
+                    source,
+                    kind: Kind::Static,
+                    paths: a.count,
+                    window_ns: window,
+                });
             } else if window > EPS {
-                hazards.push(Hazard { endpoint: ep.clone(), source, kind: Kind::Dynamic, paths: a.count, window_ns: window });
+                hazards.push(Hazard {
+                    endpoint: ep.clone(),
+                    source,
+                    kind: Kind::Dynamic,
+                    paths: a.count,
+                    window_ns: window,
+                });
             }
             // else: balanced reconvergence (same parity, same delay) — no glitch.
         }
@@ -227,7 +266,10 @@ pub fn analyze(nl: &Netlist, lib: &Lib) -> Result<GlitchReport, String> {
             .then(x.endpoint.cmp(&y.endpoint))
             .then(x.source.cmp(&y.source))
     });
-    Ok(GlitchReport { hazards, comb_loops: loops })
+    Ok(GlitchReport {
+        hazards,
+        comb_loops: loops,
+    })
 }
 
 #[cfg(test)]
@@ -249,7 +291,11 @@ mod tests {
         )
         .unwrap();
         let r = analyze(&nl, &lib()).unwrap();
-        let h: Vec<_> = r.hazards.iter().filter(|h| h.source == "a" && h.endpoint == "f").collect();
+        let h: Vec<_> = r
+            .hazards
+            .iter()
+            .filter(|h| h.source == "a" && h.endpoint == "f")
+            .collect();
         assert_eq!(h.len(), 1, "exactly one a->f hazard: {:?}", r.hazards);
         assert_eq!(h[0].kind, Kind::Static);
         assert_eq!(h[0].paths, 2);
@@ -267,10 +313,17 @@ mod tests {
         )
         .unwrap();
         let r = analyze(&nl, &lib()).unwrap();
-        let h: Vec<_> = r.hazards.iter().filter(|h| h.source == "x" && h.endpoint == "y").collect();
+        let h: Vec<_> = r
+            .hazards
+            .iter()
+            .filter(|h| h.source == "x" && h.endpoint == "y")
+            .collect();
         assert_eq!(h.len(), 1, "{:?}", r.hazards);
         assert_eq!(h[0].kind, Kind::Dynamic);
-        assert!(h[0].window_ns > 0.0, "buffered path is slower -> non-zero window");
+        assert!(
+            h[0].window_ns > 0.0,
+            "buffered path is slower -> non-zero window"
+        );
     }
 
     #[test]
@@ -296,7 +349,9 @@ mod tests {
         .unwrap();
         let r = analyze(&nl, &lib()).unwrap();
         assert!(
-            r.hazards.iter().any(|h| h.source == "a" && h.endpoint == "d" && h.kind == Kind::Static),
+            r.hazards
+                .iter()
+                .any(|h| h.source == "a" && h.endpoint == "d" && h.kind == Kind::Static),
             "static hazard at the flop data pin d: {:?}",
             r.hazards
         );
