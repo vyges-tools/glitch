@@ -172,6 +172,7 @@ fn main() {
     if args.iter().any(|a| a == "--describe") {
         // Machine-readable description of `check` for tooling that drives it.
         const DESCRIBE: &str = r#"{
+  "schema": "vyges-tool-descriptor/1.1",
   "name": "glitch",
   "summary": "static glitch / hazard analysis (reconvergent fanout)",
   "maturity": "structured",
