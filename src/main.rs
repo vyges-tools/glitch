@@ -12,10 +12,10 @@ use vyges_glitch::glitch::{self, GlitchReport};
 use vyges_glitch::{liberty::Lib, netlist};
 
 const USAGE: &str = "\
-vyges-glitch — static glitch / hazard analysis (reconvergent fanout)
+vyges loom glitch — static glitch / hazard analysis (reconvergent fanout)
 
 usage:
-  vyges-glitch check NETLIST --lib L.lib [-o OUT] [--json] [--fail-on-violation]
+  vyges loom glitch check NETLIST --lib L.lib [-o OUT] [--json] [--fail-on-violation]
 
 flags:
   --lib FILE            Liberty (cell parity via timing_sense + delays) — required
