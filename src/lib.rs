@@ -19,9 +19,20 @@
 //! window from the same delay tables `vyges-sta-si` times with. Pure std beyond the
 //! shared parsers.
 
+// The crate's own name inside it: the command-line entry ([`cli_main`]) is built into the
+// library too, and its `vyges_glitch::…` paths resolve here.
+extern crate self as vyges_glitch;
+
 pub use vyges_loom::{liberty, netlist};
 
 pub mod glitch;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const COPYRIGHT: &str = "© 2026 Vyges. All Rights Reserved.  https://vyges.com";
+
+/// The `vyges-glitch` command-line entry (the binary's `main`), built into the library too so a
+/// suite binary can link every engine and run the one it is invoked as.
+#[cfg(feature = "suite")]
+#[doc(hidden)]
+#[path = "main.rs"]
+pub mod cli_main;

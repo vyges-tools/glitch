@@ -10,6 +10,11 @@ repository = "https://github.com/vyges-tools/glitch"
 
 # No third-party deps (builds/tests offline). The netlist / Liberty parsers and the
 # delay-table lookup come from the shared vyges-loom foundation.
+[features]
+# The command-line entry built into the library too (`cli_main`), for the suite binaries
+# that link every engine and run the one they are invoked as.
+suite = []
+
 [dependencies]
 vyges-loom = { git = "https://github.com/vyges-tools/loom", branch = "main" }
 vyges-events = { git = "https://github.com/vyges-tools/events", branch = "main", default-features = false }
