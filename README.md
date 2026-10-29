@@ -9,7 +9,7 @@ momentarily glitch.
 > not only teams who can license a six-figure tool. `vyges-glitch` opens up hazard
 > analysis.
 
-> **Stability: experimental (v0.1.0).** Reconvergent-fanout detection with static
+> **Stability: stable, actively developed.** Reconvergent-fanout detection with static
 > (parity) and dynamic (delay-window) classification is real and tested; this is a
 > structural lint, not a transient/SPICE glitch sign-off — see **Current state**.
 
@@ -63,7 +63,7 @@ vyges-glitch — 1 hazard(s): 1 static, 0 dynamic
   match but the delays differ (a glitch over the settling window ≈ slowest − fastest
   path). A balanced reconvergence (same parity, same delay) is *not* flagged.
 
-## Current state (v0.1.0)
+## Current state
 
 **Working & tested:** static-hazard detection on inverted-vs-non-inverted
 reconvergence, dynamic-hazard detection on delay-skewed same-parity reconvergence,
