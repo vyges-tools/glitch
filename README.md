@@ -1,5 +1,7 @@
 # vyges-glitch
 
+**[Download Loom](https://vyges.com/products/vyges-cli/#install)** · install the free [Vyges CLI](https://vyges.com/products/vyges-cli/), then `vyges install loom`
+
 Static **glitch / hazard** analysis: a gate-level **netlist** and a **Liberty** in,
 the list of **reconvergent-fanout hazards** out — the spots where a signal can
 momentarily glitch.
